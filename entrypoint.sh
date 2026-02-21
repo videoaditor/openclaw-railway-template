@@ -43,4 +43,24 @@ fi
 
 chown -R openclaw:openclaw /data
 
+# ── Claw by Aditor: Post-setup cost-saving config ──────────────────
+# These run in background after gateway starts, applying cost defaults
+if [ -n "$CLAW_HEARTBEAT_MODEL" ] || [ -n "$CLAW_HEARTBEAT_EVERY" ]; then
+  (
+    # Wait for gateway to be ready
+    sleep 30
+    OPENCLAW_BIN=$(which openclaw 2>/dev/null || echo "node /usr/local/lib/node_modules/openclaw/dist/entry.js")
+    
+    if [ -n "$CLAW_HEARTBEAT_MODEL" ]; then
+      $OPENCLAW_BIN config set agents.defaults.heartbeat.model "$CLAW_HEARTBEAT_MODEL" 2>/dev/null && \
+        echo "[claw-setup] Heartbeat model set to $CLAW_HEARTBEAT_MODEL" || true
+    fi
+    
+    if [ -n "$CLAW_HEARTBEAT_EVERY" ]; then
+      $OPENCLAW_BIN config set agents.defaults.heartbeat.every "$CLAW_HEARTBEAT_EVERY" 2>/dev/null && \
+        echo "[claw-setup] Heartbeat interval set to $CLAW_HEARTBEAT_EVERY" || true
+    fi
+  ) &
+fi
+
 exec gosu openclaw node src/server.js
