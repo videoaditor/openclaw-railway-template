@@ -69,33 +69,3 @@ if [ -n "$CLAW_HEARTBEAT_MODEL" ] || [ -n "$CLAW_HEARTBEAT_EVERY" ]; then
 fi
 
 exec gosu openclaw node src/server.js
-
-# ── Claw by Aditor: Auto-approve first Telegram pairing ─────────────
-if [ "$CLAW_AUTO_APPROVE_FIRST" = "true" ]; then
-  (
-    echo "[Auto-Pair] Waiting for first pairing request..."
-    sleep 90  # Wait for gateway to fully start
-    
-    # Poll for pairing code (wait up to 5 minutes)
-    for i in {1..30}; do
-      PAIRING_CODE=$(timeout 10 openclaw pairing list telegram 2>/dev/null | grep -o 'Code: [A-Z0-9]*' | head -1 | cut -d' ' -f2)
-      
-      if [ -n "$PAIRING_CODE" ]; then
-        echo "[Auto-Pair] Found pairing code: $PAIRING_CODE"
-        if openclaw pairing approve telegram "$PAIRING_CODE" 2>/dev/null; then
-          echo "[Auto-Pair] ✓ First Telegram pairing approved: $PAIRING_CODE"
-          break
-        else
-          echo "[Auto-Pair] Failed to approve, retrying..."
-        fi
-      fi
-      
-      sleep 10
-    done
-    
-    if [ -z "$PAIRING_CODE" ]; then
-      echo "[Auto-Pair] No pairing request found after 5 minutes"
-    fi
-  ) &
-fi
-
