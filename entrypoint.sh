@@ -25,6 +25,11 @@ if [ -n "$WORKSPACE_REPO" ] && [ ! -f "$WORKSPACE/.workspace-init" ]; then
     cp -rn "$TMPDIR"/.* "$WORKSPACE"/ 2>/dev/null || true
     rm -rf "$TMPDIR"
     touch "$WORKSPACE/.workspace-init"
+    # Run skills installation if present
+    if [ -x "$WORKSPACE/.openclaw-skills/install.sh" ]; then
+      echo "[claw-setup] Running skills installation..."
+      bash "$WORKSPACE/.openclaw-skills/install.sh"
+    fi
     echo "[claw-setup] Workspace initialized from repo"
   else
     echo "[claw-setup] WARNING: Could not clone workspace repo, using defaults"
