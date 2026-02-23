@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 
+# ── Fix permissions FIRST (before writing config) ──────────────────
 chown -R openclaw:openclaw /data
 chmod 700 /data
 
@@ -16,8 +17,8 @@ CONFIG_DIR="/data/.openclaw"
 CONFIG_FILE="$CONFIG_DIR/openclaw.json"
 
 if [ ! -f "$CONFIG_FILE" ]; then
-  if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$OPENCLAW_DEFAULT_MODEL" ]; then
-    echo "[claw-setup] Writing openclaw.json..."
+  if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$OPENCLAW_DEFAULT_MODEL" ] && [ -n "$TELEGRAM_OWNER_ID" ]; then
+    echo "[claw-setup] Writing openclaw.json with owner approval..."
     mkdir -p "$CONFIG_DIR"
     
     # Write the config file with proper JSON structure
@@ -32,7 +33,8 @@ if [ ! -f "$CONFIG_FILE" ]; then
   "channels": {
     "telegram": {
       "default": {
-        "token": "TOKEN_PLACEHOLDER"
+        "token": "TOKEN_PLACEHOLDER",
+        "allowFrom": ["OWNER_ID_PLACEHOLDER"]
       }
     }
   }
@@ -42,11 +44,14 @@ EOCFG
     # Replace placeholders (safer than trying to inject into heredoc)
     sed -i "s|MODEL_PLACEHOLDER|$OPENCLAW_DEFAULT_MODEL|g" "$CONFIG_FILE"
     sed -i "s|TOKEN_PLACEHOLDER|$TELEGRAM_BOT_TOKEN|g" "$CONFIG_FILE"
+    sed -i "s|OWNER_ID_PLACEHOLDER|$TELEGRAM_OWNER_ID|g" "$CONFIG_FILE"
     
-    chown openclaw:openclaw "$CONFIG_FILE"
-    echo "[claw-setup] ✓ openclaw.json created"
+    # FIX: Set ownership to openclaw user (UID 1000)
+    chown -R openclaw:openclaw "$CONFIG_DIR"
+    
+    echo "[claw-setup] ✓ openclaw.json created with owner $TELEGRAM_OWNER_ID"
   else
-    echo "[claw-setup] Skipping config (missing TOKEN or MODEL)"
+    echo "[claw-setup] Skipping config (missing TOKEN, MODEL, or OWNER_ID)"
   fi
 fi
 
@@ -76,6 +81,8 @@ if [ -n "$WORKSPACE_REPO" ] && [ ! -f "$WORKSPACE/.workspace-init" ]; then
   fi
 fi
 
-chown -R openclaw:openclaw /data
+# FIX: Final permission sweep (Gemini's master key)
+chown -R 1000:1000 /data
 
+# Start server as openclaw user (UID 1000)
 exec gosu openclaw node src/server.js
